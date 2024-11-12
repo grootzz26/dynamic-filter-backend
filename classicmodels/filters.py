@@ -1,6 +1,3 @@
-from array import array
-from dataclasses import fields
-
 from rest_framework import filters
 import django_filters
 
@@ -17,8 +14,18 @@ def filter_set_fields(column):
         "notequal": "django_filters.CharFilter(field_name='{field}', method='exclude_exact_match')",
         "startswith": "django_filters.CharFilter(field_name='{field}', lookup_expr='istartswith')",
         "endswith": "django_filters.CharFilter(field_name='{field}', lookup_expr='iendswith')",
-        "empty": "django_filters.CharFilter(field_name='{field}', lookup_expr='isnull')",
-        "notempty": "django_filters.CharFilter(field_name='{field}', lookup_expr='isnull')"
+        "empty": "django_filters.CharFilter(field_name='{field}', method='exclude_exact_null')",
+        "notempty": "django_filters.CharFilter(field_name='{field}', method='exclude_exact_not_null')"
+    }
+    date_attr = {
+        "equal": "django_filters.DateFilter(field_name='{field}', lookup_expr='exact')",
+        "notequal": "django_filters.DateFilter(field_name='{field}', method='exclude_exact_match')",
+        "before": "django_filters.DateFilter(field_name='{field}', lookup_expr='lte')",
+        "after": "django_filters.DateFilter(field_name='{field}', lookup_expr='gte')",
+        "empty": "django_filters.DateFilter(field_name='{field}', method='exclude_exact_null')",
+        "notempty": "django_filters.DateFilter(field_name='{field}', method='exclude_exact_not_null')",
+        "start": "django_filters.DateFilter(field_name='{field}', lookup_expr='gte')",
+        "end": "django_filters.DateFilter(field_name='{field}', lookup_expr='lte')",
     }
     for key in attr.keys():
         if key == column.split("_")[-1]: return attr[key]
@@ -26,6 +33,18 @@ def filter_set_fields(column):
 
 def exclude_exact_match(self, queryset, name, value):
     field_param = {f"{name}__iexact": value}
+    return queryset.exclude(**field_param)
+
+def exclude_exact_null(self, queryset, name, value):
+    if value in ("true", ""):
+        value = False
+    field_param = {f"{name}__isnull": value}
+    return queryset.exclude(**field_param)
+
+def exclude_exact_not_null(self, queryset, name, value):
+    if value in ("true", ""):
+        value = True
+    field_param = {f"{name}__isnull": value}
     return queryset.exclude(**field_param)
 
 class EvalFilterFields:
@@ -57,9 +76,11 @@ def dynamic_model_filter_set(meta_model=None, fields=None, request=None):
         qp_filter = filter_set_fields(qp)
         if qp_filter:
             name = qp.split("_")[0]
-            data = { qp: eval(qp_filter.format(field=name))}
+            data[qp] = eval(qp_filter.format(field=name))
             meta_fields.append(qp)
     data["exclude_exact_match"] = exclude_exact_match
+    data["exclude_exact_null"] = exclude_exact_null
+    data["exclude_exact_not_null"] = exclude_exact_not_null
     meta_attrs = type("Meta", (), {"model": meta_model, "fields": meta_fields})
     data["Meta"] = meta_attrs
     _FilterSet = type("FilterSet", (django_filters.FilterSet,), data)

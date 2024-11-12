@@ -21,10 +21,6 @@ class CustomerAPIView(generics.ListAPIView):
         params = request.query_params.copy()
         queryset = self.get_queryset()
         filterset_class = dynamic_model_filter_set(meta_model=Customers, fields=[], request=self.request)
-        # for i in params:
-        #     if params[i] == "true":
-        #         params[i] = True
-        # breakpoint()
         filterset = filterset_class(data=params, queryset=queryset, request=request)
         if filterset.is_valid():
             queryset = filterset.qs
