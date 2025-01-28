@@ -22,7 +22,7 @@ class CustomerAPIView(generics.ListAPIView, FilterBackendMixin):
         params = request.query_params.copy()
         filter_fp = {}
         queryset = self.get_queryset()
-        self.date_params_convertion(params, Customers, filter_fp)
+        self.date_params_convertion(params, Customers, filter_fp, annotate_fields=[])
         filterset_class = self.dynamic_model_filter_set(meta_model=Customers, fields=[], request=self.request, filter_fp=filter_fp)
         filterset = filterset_class(data=params, queryset=queryset, request=request)
         if filterset.is_valid():
